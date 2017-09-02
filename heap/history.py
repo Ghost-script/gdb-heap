@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import datetime
+from past.builtins import cmp
 from heap import iter_usage_with_progress, fmt_size, fmt_addr, sign
 
 class Snapshot(object):
@@ -46,7 +47,7 @@ class Snapshot(object):
         return self._totalsize
 
     def summary(self):
-        return '%s allocated, in %i blocks' % (fmt_size(self.total_size()), 
+        return '%s allocated, in %i blocks' % (fmt_size(self.total_size()),
                                                self._num_usage)
 
     def size_by_address(self, address):
@@ -78,7 +79,7 @@ class Diff(object):
                                       fmt_size(size_change),
                                       sign(count_change),
                                       fmt_size(count_change))
-        
+
     def as_changes(self):
         result = self.chunk_report('Free-d blocks', self.old, self.old_minus_new)
         result += self.chunk_report('New blocks', self.new, self.new_minus_old)
@@ -91,12 +92,11 @@ class Diff(object):
             result += '  (none)\n'
             return result
         for usage in sorted(set_of_usage,
-                            lambda u1, u2: cmp(u1.start, u2.start)):
+                            key=lambda u: u.start):
             result += ('  %s -> %s %8i bytes %20s |%s\n'
                        % (fmt_addr(usage.start),
                           fmt_addr(usage.start + usage.size-1),
                           usage.size, usage.category, usage.hd))
         return result
-    
-history = History()
 
+history = History()

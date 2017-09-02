@@ -1,6 +1,9 @@
 '''
 This file is licensed under the PSF license
 '''
+from past.builtins import long
+from past.builtins import xrange
+
 import gdb
 from heap import WrappedPointer, caching_lookup_type, Usage, \
     type_void_ptr, fmt_addr, Category
@@ -9,7 +12,7 @@ type_size_t = gdb.lookup_type('size_t')
 SIZEOF_VOID_P = type_void_ptr.sizeof
 
 # Transliteration from Python's obmalloc.c:
-ALIGNMENT             = 8	
+ALIGNMENT             = 8
 ALIGNMENT_SHIFT       = 3
 ALIGNMENT_MASK        = (ALIGNMENT - 1)
 
@@ -51,7 +54,7 @@ class PyArenaPtr(WrappedPointer):
         if self.excess != 0:
             self.num_pools -= 1
             self.initial_pool_addr += POOL_SIZE - self.excess
-        
+
     def __str__(self):
         return ('PyArenaPtr([%s->%s], %i pools [%s->%s], excess: %i tracked by %s)'
                 % (fmt_addr(self.as_address()),
@@ -97,7 +100,7 @@ class PyArenaPtr(WrappedPointer):
         # if self.excess != 0:
         #    # FIXME: this address is wrong
         #    yield Usage(self.as_address(), self.excess, Category('pyarena', 'alignment wastage'))
-        
+
 
 class PyPoolPtr(WrappedPointer):
     # Wrapper around Python's obmalloc.c: poolp: (struct pool_header *)
@@ -112,7 +115,7 @@ class PyPoolPtr(WrappedPointer):
         return ('PyPoolPtr([%s->%s: %d blocks of size %i bytes))'
                 % (fmt_addr(self.as_address()), fmt_addr(self.as_address() + POOL_SIZE - 1),
                    self.num_blocks(), self.block_size()))
-        
+
     @classmethod
     def gdb_type(cls):
         # Deferred lookup of the "poolp" type:
@@ -132,12 +135,12 @@ class PyPoolPtr(WrappedPointer):
 
     def _maxnextoffset(self):
         return POOL_SIZE - self.block_size()
-        
+
     def iter_blocks(self):
         '''Yield all blocks within this pool, whether free or in use'''
         size = self.block_size()
         maxnextoffset = self._maxnextoffset()
-        # print initnextoffset, maxnextoffset        
+        # print initnextoffset, maxnextoffset
         offset = self._firstoffset()
         base_addr = self.as_address()
         while offset <= maxnextoffset:
@@ -198,17 +201,17 @@ class PyPoolPtr(WrappedPointer):
             offset += size
 
 
-Py_TPFLAGS_HEAPTYPE = (1L << 9)
+Py_TPFLAGS_HEAPTYPE = (long(1) << 9)
 
-Py_TPFLAGS_INT_SUBCLASS      = (1L << 23)
-Py_TPFLAGS_LONG_SUBCLASS     = (1L << 24)
-Py_TPFLAGS_LIST_SUBCLASS     = (1L << 25)
-Py_TPFLAGS_TUPLE_SUBCLASS    = (1L << 26)
-Py_TPFLAGS_STRING_SUBCLASS   = (1L << 27)
-Py_TPFLAGS_UNICODE_SUBCLASS  = (1L << 28)
-Py_TPFLAGS_DICT_SUBCLASS     = (1L << 29)
-Py_TPFLAGS_BASE_EXC_SUBCLASS = (1L << 30)
-Py_TPFLAGS_TYPE_SUBCLASS     = (1L << 31)
+Py_TPFLAGS_INT_SUBCLASS      = (long(1) << 23)
+Py_TPFLAGS_LONG_SUBCLASS     = (long(1) << 24)
+Py_TPFLAGS_LIST_SUBCLASS     = (long(1) << 25)
+Py_TPFLAGS_TUPLE_SUBCLASS    = (long(1) << 26)
+Py_TPFLAGS_STRING_SUBCLASS   = (long(1) << 27)
+Py_TPFLAGS_UNICODE_SUBCLASS  = (long(1) << 28)
+Py_TPFLAGS_DICT_SUBCLASS     = (long(1) << 29)
+Py_TPFLAGS_BASE_EXC_SUBCLASS = (long(1) << 30)
+Py_TPFLAGS_TYPE_SUBCLASS     = (long(1) << 31)
 
 class PyObjectPtr(WrappedPointer):
     @classmethod
@@ -234,7 +237,7 @@ class PyObjectPtr(WrappedPointer):
     def safe_tp_name(self):
         try:
             return self.type().field('tp_name').string()
-        except RuntimeError, UnicodeDecodeError:
+        except (RuntimeError, UnicodeDecodeError):
             # Can't even read the object at all?
             return 'unknown'
 
@@ -393,7 +396,7 @@ def is_pyobject_ptr(addr):
                     return PyObjectPtr.from_pyobject_ptr(pyop)
     except (RuntimeError, UnicodeDecodeError):
         pass # Not a python object (or corrupt)
-    
+
     # Doesn't look like a python object, implicit return None
 
 def obj_addr_to_gc_addr(addr):
@@ -502,5 +505,3 @@ def python_categorization(usage_set):
                                     level=1)
     except RuntimeError:
         pass
-        
-

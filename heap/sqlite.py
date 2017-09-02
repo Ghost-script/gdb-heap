@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+from past.builtins import long
 
 from heap import Category, caching_lookup_type
 
@@ -20,7 +21,7 @@ import gdb
 
 def categorize_sqlite3(addr, usage_set, visited):
     # "struct sqlite3" is defined in src/sqliteInt.h, which is an internal header
-    ptr_type = caching_lookup_type('sqlite3').pointer()    
+    ptr_type = caching_lookup_type('sqlite3').pointer()
     obj_ptr = gdb.Value(addr).cast(ptr_type)
     # print obj_ptr.dereference()
 
@@ -30,4 +31,3 @@ def categorize_sqlite3(addr, usage_set, visited):
     if usage_set.set_addr_category(Db_malloc_addr, Category('sqlite3', 'struct Db', None), visited):
         print aDb['pBt'].dereference()
         # FIXME
-

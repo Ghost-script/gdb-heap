@@ -13,7 +13,9 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+from __future__ import print_function
+from past.builtins import xrange
+from past.builtins import cmp
 import gdb
 import re
 import sys
@@ -32,10 +34,10 @@ def need_debuginfo(f):
     def g(self, args, from_tty):
         try:
             return f(self, args, from_tty)
-        except MissingDebuginfo, e:
-            print 'Missing debuginfo for %s' % e.module
-            print 'Suggested fix:'
-            print '    debuginfo-install %s' % e.module
+        except MissingDebuginfo as e:
+            print('Missing debuginfo for %s' % e.module)
+            print('Suggested fix:')
+            print('    debuginfo-install %s' % e.module)
     return g
 
 class Heap(gdb.Command):
@@ -68,15 +70,13 @@ class Heap(gdb.Command):
                     count_by_category[u.category] += 1
                 else:
                     count_by_category[u.category] = 1
-                    
+
         except KeyboardInterrupt:
             pass # FIXME
 
         t = Table(['Domain', 'Kind', 'Detail', 'Count', 'Allocated size'])
         for category in sorted(total_by_category.keys(),
-                               lambda s1, s2: cmp(total_by_category[s2],
-                                                  total_by_category[s1])
-                               ):
+                               key=lambda s: total_by_category[s]):
             detail = category.detail
             if not detail:
                 detail = ''
@@ -88,7 +88,7 @@ class Heap(gdb.Command):
                        ])
         t.add_row(['', '', 'TOTAL', fmt_size(total_count), fmt_size(total_size)])
         t.write(sys.stdout)
-        print
+        print()
 
 class HeapSizes(gdb.Command):
     'Print a report on memory usage, by sizes'
@@ -117,13 +117,13 @@ class HeapSizes(gdb.Command):
             pass # FIXME
         t = Table(['Chunk size', 'Num chunks', 'Allocated size'])
         for size in sorted(chunks_by_size.keys(),
-                           lambda s1, s2: chunks_by_size[s2] * s2 - chunks_by_size[s1] * s1):
+                           key=lambda s: chunks_by_size[s] * s):
             t.add_row([fmt_size(size),
                        chunks_by_size[size],
                        fmt_size(chunks_by_size[size] * size)])
         t.add_row(['TOTALS', num_chunks, fmt_size(total_size)])
         t.write(sys.stdout)
-        print        
+        print()
 
 
 class HeapUsed(gdb.Command):
@@ -135,8 +135,8 @@ class HeapUsed(gdb.Command):
 
     @need_debuginfo
     def invoke(self, args, from_tty):
-        print 'Used chunks of memory on heap'
-        print '-----------------------------'
+        print('Used chunks of memory on heap')
+        print('-----------------------------')
         ms = get_ms()
         for i, chunk in enumerate(ms.iter_chunks()):
             if not chunk.is_inuse():
@@ -145,12 +145,12 @@ class HeapUsed(gdb.Command):
             mem = chunk.as_mem()
             category = categorize(mem, size, None) # FIXME: this is actually the size of the full chunk, rather than that seen by the program
             hd = hexdump_as_bytes(mem, 32)
-            print ('%6i: %s -> %s %8i bytes %20s |%s'
-                   % (i, 
-                      fmt_addr(chunk.as_mem()), 
-                      fmt_addr(chunk.as_mem()+size-1), 
+            print('%6i: %s -> %s %8i bytes %20s |%s'
+                   % (i,
+                      fmt_addr(chunk.as_mem()),
+                      fmt_addr(chunk.as_mem()+size-1),
                       size, category, hd))
-        print
+        print()
 
 class HeapAll(gdb.Command):
     'Print all heap chunks'
@@ -161,8 +161,8 @@ class HeapAll(gdb.Command):
 
     @need_debuginfo
     def invoke(self, args, from_tty):
-        print 'All chunks of memory on heap (both used and free)'
-        print '-------------------------------------------------'
+        print('All chunks of memory on heap (both used and free)')
+        print('-------------------------------------------------')
         ms = get_ms()
         for i, chunk in enumerate(ms.iter_chunks()):
             size = chunk.chunksize()
@@ -170,13 +170,13 @@ class HeapAll(gdb.Command):
                 kind = ' inuse'
             else:
                 kind = ' free'
-            
-            print ('%i: %s -> %s %s: %i bytes (%s)'
-                   % (i, 
+
+            print('%i: %s -> %s %s: %i bytes (%s)'
+                   % (i,
                       fmt_addr(chunk.as_address()),
                       fmt_addr(chunk.as_address()+size-1),
                       kind, size, chunk))
-        print
+        print()
 
 class HeapLog(gdb.Command):
     'Print a log of recorded heap states'
@@ -189,18 +189,18 @@ class HeapLog(gdb.Command):
     def invoke(self, args, from_tty):
         h = history
         if len(h.snapshots) == 0:
-            print '(no history)'
+            print('(no history)')
             return
         for i in xrange(len(h.snapshots), 0, -1):
             s = h.snapshots[i-1]
-            print 'Label %i "%s" at %s' % (i, s.name, s.time)
-            print '    ', s.summary()
+            print('Label %i "%s" at %s' % (i, s.name, s.time))
+            print(' '.join(['    ', s.summary()]))
             if i > 1:
                 prev = h.snapshots[i-2]
                 d = Diff(prev, s)
-                print
-                print '    ', d.stats()
-            print
+                print()
+                print(' '.join(['    ', d.stats()]))
+            print()
 
 class HeapLabel(gdb.Command):
     'Record the current state of the heap for later comparison'
@@ -212,7 +212,7 @@ class HeapLabel(gdb.Command):
     @need_debuginfo
     def invoke(self, args, from_tty):
         s = history.add(args)
-        print s.summary()
+        print(s.summary())
 
 
 class HeapDiff(gdb.Command):
@@ -226,15 +226,15 @@ class HeapDiff(gdb.Command):
     def invoke(self, args, from_tty):
         h = history
         if len(h.snapshots) == 0:
-            print '(no history)'
+            print('(no history)')
             return
         prev = h.snapshots[-1]
         curr = Snapshot.current('current')
         d = Diff(prev, curr)
-        print 'Changes from %s to %s' % (prev.name, curr.name)
-        print '  ', d.stats()
-        print
-        print '\n'.join(['  ' + line for line in d.as_changes().splitlines()])
+        print('Changes from %s to %s' % (prev.name, curr.name))
+        print(' '.join(['  ', d.stats()]))
+        print()
+        print('\n'.join(['  ' + line for line in d.as_changes().splitlines()]))
 
 class HeapSelect(gdb.Command):
     'Query used heap chunks'
@@ -249,8 +249,8 @@ class HeapSelect(gdb.Command):
         from heap.parser import ParserError
         try:
             do_query(args)
-        except ParserError, e:
-            print e
+        except ParserError as e:
+            print(e)
 
 class Hexdump(gdb.Command):
     'Print a hexdump, starting at the specific region of memory'
@@ -260,17 +260,17 @@ class Hexdump(gdb.Command):
                               gdb.COMMAND_DATA)
 
     def invoke(self, args, from_tty):
-        print repr(args)
+        print(repr(args))
         if args.startswith('0x'):
             addr = int(args, 16)
         else:
-            addr = int(args)            
-            
+            addr = int(args)
+
         # assume that paging will cut in and the user will quit at some point:
         size = 32
         while True:
             hd = hexdump_as_bytes(addr, size)
-            print ('%s -> %s %s' % (fmt_addr(addr),  fmt_addr(addr + size -1), hd))
+            print('%s -> %s %s' % (fmt_addr(addr),  fmt_addr(addr + size -1), hd))
             addr += size
 
 
@@ -286,4 +286,3 @@ def register_commands():
     HeapSelect()
 
     Hexdump()
-

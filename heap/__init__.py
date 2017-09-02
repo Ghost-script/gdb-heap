@@ -14,6 +14,12 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import print_function
+from past.builtins import long
+from past.builtins import xrange
+# from builtins import object
+from future.utils import implements_iterator
+
 from collections import namedtuple
 
 try:
@@ -55,9 +61,9 @@ def caching_lookup_type(typename):
         raise RuntimeError('(cached) Could not find type "%s"' % typename)
     try:
         if 0:
-            print 'type cache miss: %r' % typename
+            print('type cache miss: %r' % typename)
         gdbtype = gdb.lookup_type(typename).strip_typedefs()
-    except RuntimeError, e:
+    except RuntimeError as e:
         # did not find the type: add a None to the cache
         gdbtype = None
     __type_cache[typename] = gdbtype
@@ -166,9 +172,9 @@ def sign(amt):
 class Category(namedtuple('Category', ('domain', 'kind', 'detail'))):
     '''
     Categorization of an in-use area of memory
-    
+
       domain: high-level grouping e.g. "python", "C++", etc
-    
+
       kind: type information, appropriate to the domain e.g. a class/type
 
         Domain     Meaning of 'kind'
@@ -177,7 +183,7 @@ class Category(namedtuple('Category', ('domain', 'kind', 'detail'))):
         'python'   the python class
         'cpython'  C structure/type (implementation detail within Python)
         'pyarena'  Python memory allocator
-    
+
       detail: additional detail
     '''
 
@@ -199,7 +205,7 @@ class Usage(object):
         self.level = level
         self.hd = hd
         self.obj=obj
-        
+
     def __repr__(self):
         result = 'Usage(%s, %s' % (hex(self.start), hex(self.size))
         if self.category:
@@ -227,7 +233,7 @@ def hexdump_as_bytes(addr, size):
         b = int(ptr.dereference())
         bytebuf.append(b)
     return (' '.join(['%02x' % b for b in bytebuf])
-            + ' |' 
+            + ' |'
             + ''.join([as_hexdump_char(b) for b in bytebuf])
             + '|')
 
@@ -243,7 +249,7 @@ def hexdump_as_long(addr, count):
         for i in range(sizeof_ptr):
             bytebuf.append(int((bptr + i).dereference()))
     return (' '.join([fmt_addr(long) for long in longbuf])
-            + ' |' 
+            + ' |'
             + ''.join([as_hexdump_char(b) for b in bytebuf])
             + '|')
 
@@ -259,7 +265,7 @@ class Table(object):
     def add_row(self, row):
         assert len(row) == self.numcolumns
         self.rows.append(row)
-        
+
     def write(self, out):
         colwidths = self._calc_col_widths()
 
@@ -310,27 +316,27 @@ class UsageSet(object):
         if visited:
             if addr in visited:
                 if debug:
-                    print 'addr 0x%x already visited (for category %r)' % (addr, category)
+                    print('addr 0x%x already visited (for category %r)' % (addr, category))
                 return False
             visited.add(addr)
 
         if addr in self.usage_by_address:
             if debug:
-                print 'addr 0x%x found (for category %r, level=%i)' % (addr, category, level)
+                print('addr 0x%x found (for category %r, level=%i)' % (addr, category, level))
             u = self.usage_by_address[addr]
             # Bail if we already have a more detailed categorization for the
             # address:
             if level <= u.level:
                 if debug:
-                    print ('addr 0x%x already has category %r (level %r)'
+                    print('addr 0x%x already has category %r (level %r)'
                            % (addr, u.category, u.level))
                 return False
             u.category = category
-            u.level = level            
+            u.level = level
             return True
         else:
             if debug:
-                print 'addr 0x%x not found (for category %r)' % (addr, category)
+                print('addr 0x%x not found (for category %r)' % (addr, category))
 
 class PythonCategorizer(object):
     '''
@@ -402,7 +408,7 @@ class PythonCategorizer(object):
             for fieldname, catname, fn in (('db', 'sqlite3', categorize_sqlite3),
                                            ('st', 'sqlite3_stmt', None)):
                 field_ptr = long(obj_ptr[fieldname])
-                
+
                 # sqlite's src/mem1.c adds a a sqlite3_int64 (size) to the front
                 # of the allocation, so we need to look 8 bytes earlier to find
                 # the malloc-ed region:
@@ -428,7 +434,7 @@ class PythonCategorizer(object):
             ptr_type = caching_lookup_type('struct rpmmiObject_s').pointer()
             if ptr_type:
                 obj_ptr = gdb.Value(u.start).cast(ptr_type)
-                print obj_ptr.dereference()
+                print(obj_ptr.dereference())
                 mi = obj_ptr['mi']
                 if usage_set.set_addr_category(long(mi),
                                                Category('rpm', 'rpmdbMatchIterator', None)):
@@ -478,7 +484,7 @@ def categorize(u, usage_set):
         except (RuntimeError, UnicodeEncodeError, UnicodeDecodeError):
             # If something went wrong, assume that this wasn't really a python
             # object, and fall through:
-            print "couldn't categorize pyop:" % pyop
+            print("couldn't categorize pyop:" % pyop)
             pass
 
     # C++ detection: only enabled if we can capture "execute"; there seems to
@@ -509,6 +515,7 @@ def as_nul_terminated_string(addr, size):
         # Probably not string data:
         return None
 
+@implements_iterator
 class ProgressNotifier(object):
     '''Wrap an iterable with progress notification to stdout'''
     def __init__(self, inner, msg):
@@ -519,11 +526,11 @@ class ProgressNotifier(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         self.count += 1
         if 0 == self.count % 10000:
-            print self.msg, self.count
-        return self.inner.next()
+            print(self.msg, self.count)
+        return next(self.inner)
 
 def iter_usage_with_progress():
     return ProgressNotifier(iter_usage(), 'Blocks retrieved')
@@ -557,8 +564,3 @@ def iter_usage():
                     yield u
             else:
                 yield Usage(long(mem_ptr), chunksize)
-
-            
-    
-
-

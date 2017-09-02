@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+from __future__ import print_function
 import sys
 
 class Expression(object):
@@ -152,8 +152,8 @@ def do_query(args):
         filter_ = parse_query(args)
 
     if False:
-        print args
-        print filter_
+        print(args)
+        print(filter_)
 
     columns = [Column('Start',
                       lambda u: u.start,
@@ -175,7 +175,7 @@ def do_query(args):
                       lambda u: u.hexdump,
                       None),
                ]
-               
+
     t = Table([col.name for col in columns])
 
     for u in Query(filter_):
@@ -187,7 +187,7 @@ def do_query(args):
             kind = u.category.kind
             detail = u.category.detail
             if not detail:
-                detail = ''        
+                detail = ''
         else:
             domain = ''
             kind = ''
@@ -201,6 +201,4 @@ def do_query(args):
                    u.hd])
 
     t.write(sys.stdout)
-    print
-    
-    
+    print()

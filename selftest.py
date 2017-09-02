@@ -18,7 +18,7 @@
 #
 # Adapted from Python's Lib/test/test_gdb.py, which in turn was adapted from
 # similar work in Unladen Swallow's Lib/test/test_jit_gdb.py
-
+from __future__ import print_function
 import os
 import re
 import subprocess
@@ -26,12 +26,14 @@ import sys
 import unittest
 import random
 from collections import namedtuple
-from test.test_support import run_unittest, findfile
 
-if sys.maxint == 0x7fffffff:
+try:
+    if sys.maxint == 0x7fffffff:
+        _32bit = True
+    else:
+        _32bit = False
+except AttributeError:
     _32bit = True
-else:
-    _32bit = False
 
 try:
     gdb_version, _ = subprocess.Popen(["gdb", "--version"],
@@ -40,13 +42,13 @@ except OSError:
     # This is what "no gdb" looks like.  There may, however, be other
     # errors that manifest this way too.
     raise unittest.SkipTest("Couldn't find gdb on the path")
-gdb_version_number = re.search(r"^GNU gdb [^\d]*(\d+)\.", gdb_version)
+gdb_version_number = re.search(r"^GNU gdb [^\d]*(\d+)\.", gdb_version.decode('utf-8'))
 if int(gdb_version_number.group(1)) < 7:
     raise unittest.SkipTest("gdb versions before 7.0 didn't support python embedding"
                             " Saw:\n" + gdb_version)
 
 # Verify that "gdb" was built with the embedded python support enabled:
-cmd = "--eval-command=python import sys; print sys.version_info"
+cmd = "--eval-command=python import sys; print (sys.version_info)"
 p = subprocess.Popen(["gdb", "--batch", cmd],
                      stdout=subprocess.PIPE)
 gdbpy_version, _ = p.communicate()
@@ -100,7 +102,7 @@ main (int argc, char **argv)
 }
 '''
         return result
-        
+
 
 class TestProgram(object):
     def __init__(self, name, source, is_cplusplus=False):
@@ -117,20 +119,20 @@ class TestProgram(object):
         f = open(self.srcname, 'w')
         f.write(source)
         f.close()
-        
+
         c = subprocess.call([compiler,
 
                              # We want debug information:
-                             '-g', 
-                             
+                             '-g',
+
                              # Name of the binary:
                              '-o', self.name,
 
                              # The source file:
-                             self.srcname]) 
+                             self.srcname])
         # Check exit status:
         assert(c == 0)
-        
+
         # Check that the binary exists:
         assert(os.path.exists(self.name))
 
@@ -194,7 +196,7 @@ class ParsedTable(object):
 
     # Column metrics:
     ColMetric = namedtuple('ColMetric', ('offset', 'width'))
-        
+
     def __init__(self, sep_index, colmetrics, lines):
         self.sep_index, self.colmetrics = sep_index, colmetrics
 
@@ -213,7 +215,7 @@ class ParsedTable(object):
 
     def __str__(self):
         return self.rawdata
-            
+
     def get_cell(self, x, y):
         return self.rows[y][x]
 
@@ -248,7 +250,7 @@ class ParsedTable(object):
                 m = re.match('^([0-9,]+)$', cell) # [0-9]\,
                 if m:
                     cell = int(cell.replace(',', ''))
-                    
+
             row.append(cell)
         return tuple(row)
 
@@ -265,7 +267,7 @@ class ParsedTable(object):
                     coldata.append(cls.ColMetric(offset=offset, width=width))
                     offset += width + 2
                 return (i, tuple(coldata))
-            
+
 
 # Test data for table parsing (edited fragment of output during development):
 test_table = '''
@@ -367,15 +369,15 @@ class DebuggerTests(unittest.TestCase):
 
         # Ignore some noise on stderr due to a pending breakpoint:
         if breakpoint:
-            err = err.replace('Function "%s" not defined.\n' % breakpoint, '')
+            err = err.decode('utf-8').replace('Function "%s" not defined.\n' % breakpoint, '')
 
         # Ensure no unexpected error messages:
         if err != '':
-            print out
-            print err
+            print (out)
+            print (err)
             self.fail('stderr from gdb was non-empty: %r' % err)
 
-        return out        
+        return out
 
     def program_test(self, name, source, commands, is_cplusplus=False):
         p = TestProgram(name, source, is_cplusplus)
@@ -610,7 +612,7 @@ public:
         src.add_breakpoint()
         source = src.as_c_source()
 
-        out = self.program_test('test_history', source, 
+        out = self.program_test('test_history', source,
                                 commands=['run', 'heap sizes', 'heap label foo', 'cont', 'heap log', 'heap diff'])
         #print out
         # FIXME
@@ -637,7 +639,7 @@ public:
 
         tables = ParsedTable.parse_lines(out)
         heap_out = tables[0]
-        
+
         # Ensure that the code detected instances of various python types we
         # expect to be present:
         for kind in ('str', 'unicode', 'list', 'tuple', 'dict', 'type', 'code',
